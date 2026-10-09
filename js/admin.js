@@ -2,16 +2,14 @@ function checkPassword() {
     try {
         const input = document.getElementById("admin-password").value;
         
-        // Надежная проверка: если CONFIG не загрузился, используем запасной пароль.
-        // Замени "твой_пароль" на свой реальный пароль!
+        // Надежная проверка пароля
+        // ЗАМЕНИ "твой_пароль" НА СВОЙ РЕАЛЬНЫЙ ПАРОЛЬ!
         const realPassword = (typeof CONFIG !== 'undefined' && CONFIG.adminPassword) ? CONFIG.adminPassword : "твой_пароль";
 
         if (input === realPassword) {
             document.getElementById("login-screen").style.display = "none";
-            
             const dashboard = document.getElementById("admin-dashboard");
             if (dashboard) dashboard.style.display = "block";
-            
             loadAdminData();
         } else {
             const errorText = document.getElementById("login-error");
@@ -30,25 +28,32 @@ function openTab(tabId) {
     event.currentTarget.classList.add("active");
 }
 
+// Вспомогательная функция для безопасной загрузки
+function safeSetValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value || "";
+}
+
 // Загрузка данных в формы
 function loadAdminData() {
     const data = StorageManager.get();
     
     // Вкладка "Главная"
-    document.getElementById("edit-clan-name").value = data.clan.name;
-    document.getElementById("edit-clan-tagline").value = data.clan.tagline;
-    document.getElementById("edit-clan-desc").value = data.clan.description;
+    safeSetValue("edit-clan-name", data.clan.name);
+    safeSetValue("edit-clan-tagline", data.clan.tagline);
+    safeSetValue("edit-clan-desc", data.clan.description);
     
-    document.getElementById("edit-social-discord").value = data.clan.socials.discord;
-    document.getElementById("edit-social-telegram").value = data.clan.socials.telegram;
-    document.getElementById("edit-social-tiktok").value = data.clan.socials.tiktok;
-    document.getElementById("edit-social-youtube").value = data.clan.socials.youtube;
+    if (data.clan.socials) {
+        safeSetValue("edit-social-discord", data.clan.socials.discord);
+        safeSetValue("edit-social-telegram", data.clan.socials.telegram);
+        safeSetValue("edit-social-tiktok", data.clan.socials.tiktok);
+        safeSetValue("edit-social-youtube", data.clan.socials.youtube);
+    }
 
     // Загрузка правил (каждое правило с новой строки)
-    if (data.rules && data.rules.length > 0) {
-        document.getElementById("rules-input").value = data.rules.join('\n');
-    } else {
-        document.getElementById("rules-input").value = "";
+    const rulesEl = document.getElementById("rules-input");
+    if (rulesEl) {
+        rulesEl.value = (data.rules && data.rules.length > 0) ? data.rules.join('\n') : "";
     }
 
     // Вкладка "Клан"
@@ -58,23 +63,39 @@ function loadAdminData() {
 // Сохранение вкладки "Главная"
 function saveGeneral() {
     const data = StorageManager.get();
-    data.clan.name = document.getElementById("edit-clan-name").value;
-    data.clan.tagline = document.getElementById("edit-clan-tagline").value;
-    data.clan.description = document.getElementById("edit-clan-desc").value;
     
-    data.clan.socials.discord = document.getElementById("edit-social-discord").value;
-    data.clan.socials.telegram = document.getElementById("edit-social-telegram").value;
-    data.clan.socials.tiktok = document.getElementById("edit-social-tiktok").value;
-    data.clan.socials.youtube = document.getElementById("edit-social-youtube").value;
+    const nameEl = document.getElementById("edit-clan-name");
+    if (nameEl) data.clan.name = nameEl.value;
 
-    // Сохранение правил (разбиваем текст по строкам, убираем пустые)
-    const rulesText = document.getElementById("rules-input").value;
-    data.rules = rulesText.split('\n').map(rule => rule.trim()).filter(rule => rule !== "");
+    const taglineEl = document.getElementById("edit-clan-tagline");
+    if (taglineEl) data.clan.tagline = taglineEl.value;
+
+    const descEl = document.getElementById("edit-clan-desc");
+    if (descEl) data.clan.description = descEl.value;
+    
+    if (!data.clan.socials) data.clan.socials = {};
+    
+    const discordEl = document.getElementById("edit-social-discord");
+    if (discordEl) data.clan.socials.discord = discordEl.value;
+    
+    const tgEl = document.getElementById("edit-social-telegram");
+    if (tgEl) data.clan.socials.telegram = tgEl.value;
+    
+    const ttEl = document.getElementById("edit-social-tiktok");
+    if (ttEl) data.clan.socials.tiktok = ttEl.value;
+    
+    const ytEl = document.getElementById("edit-social-youtube");
+    if (ytEl) data.clan.socials.youtube = ytEl.value;
+
+    // Сохранение правил
+    const rulesEl = document.getElementById("rules-input");
+    if (rulesEl) {
+        data.rules = rulesEl.value.split('\n').map(rule => rule.trim()).filter(rule => rule !== "");
+    }
 
     StorageManager.save(data);
     alert("Настройки успешно сохранены!");
     
-    // Обновляем шапку и правила на лету (если функция renderRules существует на странице)
     if (typeof renderHeaderInfo === "function") renderHeaderInfo();
     if (typeof renderRules === "function") renderRules();
 }
@@ -82,8 +103,11 @@ function saveGeneral() {
 // Рендер списка участников для редактирования
 function renderMembersEditList(data) {
     const container = document.getElementById("members-edit-list");
+    if (!container) return; // Защита от ошибки, если элемента нет
     container.innerHTML = "";
     
+    if (!data.members) return;
+
     data.members.forEach((m, index) => {
         const div = document.createElement("div");
         div.className = "edit-item";
@@ -108,6 +132,7 @@ function renderMembersEditList(data) {
 
 function addNewMember() {
     const data = StorageManager.get();
+    if (!data.members) data.members = [];
     data.members.push({ id: Date.now(), name: "Новый воин", rank: "Новобранец", status: "offline", joined: new Date().toISOString().split('T')[0], avatar: "👤" });
     renderMembersEditList(data);
 }
