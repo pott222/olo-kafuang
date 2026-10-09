@@ -11,199 +11,153 @@ document.addEventListener("DOMContentLoaded", () => {
         height = canvas.height = window.innerHeight;
     });
 
-    // Ambient floating spores (bioluminescent dust)
+    // 1. Мелкая светящаяся пыль на фоне (создает объем)
     class Spore {
         constructor() {
-            this.reset();
-            this.y = Math.random() * height;
-        }
-
-        reset() {
             this.x = Math.random() * width;
-            this.y = height + 10;
+            this.y = Math.random() * height;
             this.size = Math.random() * 1.5 + 0.5;
-            this.speedY = -(Math.random() * 0.4 + 0.1);
-            this.speedX = (Math.random() - 0.5) * 0.3;
-            this.alpha = Math.random() * 0.6 + 0.2;
+            this.speedY = -(Math.random() * 0.5 + 0.1);
+            this.speedX = (Math.random() - 0.5) * 0.5;
             this.pulse = Math.random() * Math.PI * 2;
         }
-
         update() {
-            this.pulse += 0.03;
+            this.pulse += 0.02;
             this.y += this.speedY;
             this.x += this.speedX + Math.sin(this.pulse) * 0.2;
-
-            if (this.y < -10 || this.x < -10 || this.x > width + 10) {
-                this.reset();
-            }
+            if (this.y < -10) this.y = height + 10;
+            if (this.x < -10) this.x = width + 10;
+            if (this.x > width + 10) this.x = -10;
         }
-
         draw() {
-            const glowAlpha = this.alpha * (0.6 + 0.4 * Math.sin(this.pulse));
             ctx.beginPath();
-            ctx.fillStyle = `rgba(124, 245, 179, ${glowAlpha})`;
+            ctx.fillStyle = `rgba(150, 240, 255, ${0.2 + 0.3 * Math.sin(this.pulse)})`;
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fill();
         }
     }
 
-    // Woodsprite (Tree of Souls seed with jellyfish-like pulsing & tendrils)
-    class Woodsprite {
+    // 2. Семена Древа Душ (Атокирина) - точная копия по фото
+    class Atokirina {
         constructor() {
-            this.reset(true);
-        }
-
-        reset(initial = false) {
             this.x = Math.random() * width;
-            this.y = initial ? Math.random() * height : height + 60;
-            this.baseRadius = Math.random() * 8 + 8; // Bell size
-            this.tendrilCount = Math.floor(Math.random() * 3) + 5; // 5 to 7 tendrils
-            this.tendrilLength = this.baseRadius * (Math.random() * 1.8 + 2.2);
-
-            // Pulse dynamics (mimicking medusa / jellyfish swimming)
-            this.pulseTime = Math.random() * Math.PI * 2;
-            this.pulseSpeed = Math.random() * 0.03 + 0.025;
-            this.thrust = 0;
-            this.driftX = (Math.random() - 0.5) * 0.4;
-            this.tilt = 0;
+            this.y = Math.random() * height + height; // Появляются снизу
+            this.scale = Math.random() * 0.4 + 0.3; // Разный размер
+            this.speedY = -(Math.random() * 0.5 + 0.2); // Медленно плывут вверх
+            this.speedX = (Math.random() - 0.5) * 0.3;
+            this.sway = Math.random() * Math.PI * 2;
             
-            // Hue variation: turquoise to soft glowing green
-            this.hue = Math.random() > 0.4 ? 175 : 155;
+            this.numTendrils = 18; // Количество длинных усиков
+            this.numInnerWings = 6; // Внутренние лепестки
+            this.tendrilOffsets = Array.from({length: this.numTendrils}, () => Math.random() * Math.PI * 2);
         }
 
         update() {
-            this.pulseTime += this.pulseSpeed;
+            this.y += this.speedY;
+            this.sway += 0.015; // Скорость покачивания щупалец
+            this.x += Math.sin(this.sway) * 0.4 + this.speedX; // Легкий дрейф влево-вправо
 
-            // Jellyfish stroke cycle: rapid contraction, slow glide
-            const pulseCycle = Math.sin(this.pulseTime);
-            if (pulseCycle > 0.7) {
-                this.thrust += 0.08; // upward burst
-            }
-            this.thrust *= 0.94; // water-like resistance damping
-
-            const vy = -(0.35 + this.thrust * 1.6);
-            this.y += vy;
-
-            // Slight lateral wobble based on pulse and drift
-            this.tilt = Math.sin(this.pulseTime * 0.5) * 0.15;
-            this.x += this.driftX + Math.sin(this.pulseTime) * 0.5;
-
-            // Respawn above canvas
-            if (this.y < -80) {
-                this.reset(false);
+            // Если улетели за верхний край - возвращаем вниз
+            if (this.y < -150) {
+                this.y = height + 150;
+                this.x = Math.random() * width;
             }
         }
 
         draw() {
             ctx.save();
             ctx.translate(this.x, this.y);
-            ctx.rotate(this.tilt);
+            // Легкий наклон всего семени в зависимости от движения
+            ctx.rotate(Math.sin(this.sway) * 0.05);
+            ctx.scale(this.scale, this.scale);
 
-            const expansion = 1 + Math.sin(this.pulseTime) * 0.22;
-            const contractionY = 1 - Math.sin(this.pulseTime) * 0.18;
-            const r = this.baseRadius * expansion;
-
-            // 1. Ambient outer glow
-            const outerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.5);
-            outerGlow.addColorStop(0, `hsla(${this.hue}, 100%, 75%, 0.35)`);
-            outerGlow.addColorStop(0.5, `hsla(${this.hue}, 100%, 65%, 0.1)`);
-            outerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = outerGlow;
+            // --- 1. Длинные спадающие нити (Купол) ---
             ctx.beginPath();
-            ctx.arc(0, 0, r * 3.5, 0, Math.PI * 2);
-            ctx.fill();
+            for (let i = 0; i < this.numTendrils; i++) {
+                let t = i / (this.numTendrils - 1);
+                let spread = (t - 0.5) * 140; // Ширина купола
+                let wave = Math.sin(this.sway * 1.5 + this.tendrilOffsets[i]) * 10;
+                
+                ctx.moveTo(0, -10); // Растут чуть выше центра
 
-            // 2. Trailing Tendrils (Bézier curves)
-            for (let i = 0; i < this.tendrilCount; i++) {
-                const spread = (i / (this.tendrilCount - 1) - 0.5) * (r * 1.4);
-                const startX = spread;
-                const startY = 2;
+                // Кривые Безье создают форму арки, падающей вниз
+                let cp1x = spread * 0.7;
+                let cp1y = -90 - Math.sin(t * Math.PI) * 30; // Выгиб вверх
 
-                const wave = Math.sin(this.pulseTime * 1.5 + i * 0.8);
-                const cp1x = startX + wave * (r * 0.6);
-                const cp1y = startY + this.tendrilLength * 0.45;
-                const cp2x = startX - wave * (r * 0.8);
-                const cp2y = startY + this.tendrilLength * 0.75;
-                const endX = startX + wave * (r * 0.4);
-                const endY = startY + this.tendrilLength;
+                let cp2x = spread * 1.2 + wave;
+                let cp2y = -10; // Начинают падать
 
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
+                let endX = spread * 1.1 + wave * 1.5;
+                let endY = 100 + Math.abs(spread) * 0.6; // Концы нитей внизу
+
                 ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
-
-                const grad = ctx.createLinearGradient(startX, startY, endX, endY);
-                grad.addColorStop(0, `hsla(${this.hue}, 100%, 85%, 0.8)`);
-                grad.addColorStop(0.5, `hsla(${this.hue}, 100%, 70%, 0.4)`);
-                grad.addColorStop(1, 'hsla(180, 100%, 90%, 0)');
-
-                ctx.strokeStyle = grad;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                // Tendril terminal tip spore
-                ctx.beginPath();
-                ctx.fillStyle = `hsla(${this.hue}, 100%, 80%, ${0.3 + 0.3 * Math.sin(this.pulseTime + i)})`;
-                ctx.arc(endX, endY, 1.2, 0, Math.PI * 2);
-                ctx.fill();
             }
+            
+            // Градиент нитей: сверху яркие, снизу растворяются
+            let gradTendrils = ctx.createLinearGradient(0, -90, 0, 100);
+            gradTendrils.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+            gradTendrils.addColorStop(0.4, "rgba(220, 245, 255, 0.4)");
+            gradTendrils.addColorStop(1, "rgba(255, 255, 255, 0)");
+            
+            ctx.strokeStyle = gradTendrils;
+            ctx.lineWidth = 1;
+            ctx.stroke();
 
-            // 3. Bell / Umbrella Dome
-            ctx.save();
-            ctx.scale(1, contractionY);
+            // --- 2. Внутренние лепестки (Крылышки у ядра) ---
             ctx.beginPath();
-            ctx.moveTo(-r, 0);
-            ctx.bezierCurveTo(-r, -r * 1.4, r, -r * 1.4, r, 0);
-            ctx.bezierCurveTo(r * 0.5, r * 0.2, -r * 0.5, r * 0.2, -r, 0);
-            ctx.closePath();
+            for (let i = 0; i < this.numInnerWings; i++) {
+                let t = i / (this.numInnerWings - 1);
+                let spread = (t - 0.5) * 60;
+                let wave = Math.sin(this.sway * 2 + i) * 4;
+                
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(
+                    spread * 1.1, -40, 
+                    spread * 1.4 + wave, 10, 
+                    spread + wave, 45
+                );
+            }
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            const bellGrad = ctx.createRadialGradient(0, -r * 0.4, 0, 0, -r * 0.2, r);
-            bellGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-            bellGrad.addColorStop(0.4, `hsla(${this.hue}, 100%, 75%, 0.6)`);
-            bellGrad.addColorStop(0.8, `hsla(${this.hue}, 90%, 55%, 0.25)`);
-            bellGrad.addColorStop(1, `hsla(${this.hue}, 100%, 70%, 0.05)`);
-
-            ctx.fillStyle = bellGrad;
+            // --- 3. Ядро (Светящееся сердце семени) ---
+            let coreGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 18);
+            coreGlow.addColorStop(0, "rgba(255, 255, 255, 1)");
+            coreGlow.addColorStop(0.3, "rgba(200, 230, 255, 0.6)");
+            coreGlow.addColorStop(0.7, "rgba(150, 100, 255, 0.2)"); // Легкий фиолетовый оттенок как в фильме
+            coreGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+            
+            ctx.beginPath();
+            ctx.fillStyle = coreGlow;
+            ctx.arc(0, 0, 18, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.strokeStyle = `hsla(${this.hue}, 100%, 90%, 0.5)`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-            ctx.restore();
-
-            // 4. Central Sacred Core (Glowing seed nucleus)
+            // Сама центральная точка
             ctx.beginPath();
-            const coreGrad = ctx.createRadialGradient(0, -r * 0.3, 0, 0, -r * 0.3, r * 0.5);
-            coreGrad.addColorStop(0, '#ffffff');
-            coreGrad.addColorStop(0.6, `hsla(${this.hue}, 100%, 85%, 0.9)`);
-            coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            ctx.fillStyle = coreGrad;
-            ctx.arc(0, -r * 0.3, r * 0.4, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.arc(0, 0, 2, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
         }
     }
 
-    // Population density balanced for aesthetics and performance
-    const spriteCount = Math.min(Math.floor(width / 50), 32);
-    const sprites = Array.from({ length: spriteCount }, () => new Woodsprite());
-    const spores = Array.from({ length: 45 }, () => new Spore());
+    // Создаем массивы (Пылинки на фоне и сами большие Семена)
+    const spores = Array.from({length: 60}, () => new Spore());
+    // 12 штук достаточно, чтобы они смотрелись эпично и не тормозили телефон
+    const seeds = Array.from({length: 12}, () => {
+        let s = new Atokirina();
+        s.y = Math.random() * height; // Чтобы при старте они были распределены по экрану
+        return s;
+    });
 
     function animate() {
         ctx.clearRect(0, 0, width, height);
-
-        // Render ambient background spores first
-        spores.forEach(spore => {
-            spore.update();
-            spore.draw();
-        });
-
-        // Render animated woodsprites
-        sprites.forEach(sprite => {
-            sprite.update();
-            sprite.draw();
-        });
-
+        
+        spores.forEach(s => { s.update(); s.draw(); });
+        seeds.forEach(s => { s.update(); s.draw(); });
+        
         requestAnimationFrame(animate);
     }
 
