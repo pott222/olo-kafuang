@@ -3,115 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Центр управления Эйвы - Olo'Kafu'áng</title>
+    <title>Инфо - Olo'Kafu'áng</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;600&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/animations.css">
-    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
+    <!-- Анимация семян Эйвы на фоне -->
     <canvas id="particles-canvas"></canvas>
     
     <nav class="navbar">
         <div class="logo">
+            <!-- Если ты переименовал логотип в hand.png, поменяй тут logo.svg на hand.png -->
             <img src="assets/logo.svg" alt="Эйва" class="glow-icon">
             <span class="clan-name-text font-orbitron text-glow"></span>
         </div>
+        
+        <!-- Кнопка мобильного меню (бургер) -->
+        <div class="burger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
         <ul class="nav-links">
             <li><a href="index.html">Главная</a></li>
             <li><a href="schedule.html">Сессии</a></li>
             <li><a href="clan.html">Клан</a></li>
-            <li><a href="info.html">Инфо</a></li>
-            <li><a href="admin.html" class="active admin-link">Админка</a></li>
+            <li><a href="info.html" class="active">Инфо</a></li>
+            <li><a href="admin.html" class="admin-link">Админка</a></li>
         </ul>
     </nav>
 
     <main class="container fade-in" style="position: relative; z-index: 10;">
-        <!-- Экран входа -->
-        <div id="login-screen" class="admin-login glow-box" style="background: var(--bg-card); border-radius: 15px; border: 1px solid var(--glass-border); padding: 40px; max-width: 500px; margin: 50px auto;">
-            <h2 class="font-cinzel neon-text">Связь с Древом Душ</h2>
-            <p style="color: var(--text-muted); margin-top: 10px;">Введи слово силы (пароль)</p>
-            <input type="password" id="admin-password" placeholder="Пароль...">
-            <button class="btn btn-primary glow-box" onclick="checkPassword()">Войти</button>
-            <p id="login-error" style="color: #ff4d4d; margin-top: 15px; display: none;">Эйва не слышит тебя. Неверный пароль.</p>
-        </div>
+        <div class="info-content glow-box" style="background: var(--bg-card); border-radius: 15px; border: 1px solid var(--glass-border); padding: 40px; margin-top: 50px;">
+            
+            <h1 class="font-cinzel neon-text" style="text-align: center; margin-bottom: 30px;">Священные Знания Клана</h1>
+            
+            <!-- Блок с описанием клана (подтягивается из настроек) -->
+            <section class="clan-info-section" style="margin-bottom: 40px;">
+                <h2 class="font-orbitron" style="color: var(--accent-green); margin-bottom: 15px;">О нас</h2>
+                <p class="clan-desc-text" style="line-height: 1.6; color: #ddd;"></p>
+            </section>
 
-        <!-- Панель управления -->
-        <div id="admin-dashboard" class="admin-dashboard">
-            <div class="admin-tabs">
-                <button class="tab-btn active" onclick="openTab('tab-general')">Главная & Инфо</button>
-                <button class="tab-btn" onclick="openTab('tab-members')">Состав Клана</button>
-                <button class="tab-btn" onclick="openTab('tab-system')">Данные (Импорт/Экспорт)</button>
-            </div>
-
-            <!-- Таб: Главная и настройки -->
-            <div id="tab-general" class="tab-content active">
-                <h3 class="font-orbitron" style="color: var(--accent-green); margin-bottom: 20px;">Настройки клана</h3>
-                <div class="form-group">
-                    <label>Название клана</label>
-                    <input type="text" id="edit-clan-name">
-                </div>
-                <div class="form-group">
-                    <label>Слоган</label>
-                    <input type="text" id="edit-clan-tagline">
-                </div>
-                <div class="form-group">
-                    <label>Описание (О нас)</label>
-                    <textarea id="edit-clan-desc"></textarea>
-                </div>
-                
-                <!-- БЛОК ПРАВИЛ -->
-                <div class="admin-block" style="margin-top: 30px;">
-                    <h3 class="font-orbitron" style="color: var(--accent-green); margin-bottom: 20px;">Управление правилами</h3>
-                    <div class="form-group">
-                        <label for="rules-input">Впиши правила (каждое правило с новой строки):</label>
-                        <textarea id="rules-input" rows="6" placeholder="1. Уважай Эйву и братьев по клану.&#10;2. Никакого конфликта без причины."></textarea>
-                    </div>
-                </div>
-                
-                <h3 class="font-orbitron" style="color: var(--accent-green); margin: 30px 0 20px;">Соцсети (оставьте пустым, чтобы скрыть)</h3>
-                <div class="form-group"><label>Discord</label><input type="text" id="edit-social-discord"></div>
-                <div class="form-group"><label>Telegram</label><input type="text" id="edit-social-telegram"></div>
-                <div class="form-group"><label>TikTok</label><input type="text" id="edit-social-tiktok"></div>
-                <div class="form-group"><label>YouTube</label><input type="text" id="edit-social-youtube"></div>
-
-                <div class="action-buttons">
-                    <button class="btn btn-primary glow-box" onclick="saveGeneral()">Сохранить изменения</button>
-                </div>
-            </div>
-
-            <!-- Таб: Состав -->
-            <div id="tab-members" class="tab-content">
-                <h3 class="font-orbitron" style="color: var(--accent-green); margin-bottom: 20px;">Управление составом</h3>
-                <div id="members-edit-list" class="edit-list"></div>
-                <button class="btn btn-secondary glow-box" onclick="addNewMember()">+ Добавить воина</button>
-                <div class="action-buttons">
-                    <button class="btn btn-primary glow-box" onclick="saveMembers()">Сохранить состав</button>
-                </div>
-            </div>
-
-            <!-- Таб: Система -->
-            <div id="tab-system" class="tab-content">
-                <h3 class="font-orbitron" style="color: var(--accent-amber); margin-bottom: 20px;">Управление данными (JSON)</h3>
-                <p style="margin-bottom: 20px; color: #ccc; line-height: 1.5;">
-                    Все изменения сохраняются только в вашем браузере. Чтобы обновить сайт для всех, нажмите <b>«Экспорт JSON»</b>, скачайте файл и замените им файл <code>data/default-data.json</code> в вашем репозитории на GitHub.
-                </p>
-                <div class="action-buttons" style="flex-wrap: wrap;">
-                    <button class="btn btn-primary glow-box" onclick="exportJSON()">📥 Экспорт JSON (Скачать)</button>
-                    <label class="btn btn-secondary glow-box" style="cursor: pointer;">
-                        📤 Импорт JSON (Загрузить)
-                        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importJSON(event)">
-                    </label>
-                    <button class="btn btn-danger btn" onclick="resetData()">Сбросить всё (Удалить кэш)</button>
-                </div>
-            </div>
+            <!-- Блок с правилами (подтягивается из админки) -->
+            <section class="rules-section">
+                <h2 class="font-orbitron" style="color: var(--accent-green); margin-bottom: 15px;">Свод Правил Эйвы</h2>
+                <ul id="rules-container" class="rules-list" style="color: #ddd; line-height: 1.8; padding-left: 20px;">
+                    <!-- Заглушка, пока скрипт загружает правила -->
+                    <li>Эйва собирает правила...</li>
+                </ul>
+            </section>
+            
         </div>
     </main>
 
+    <!-- Подключаем только базовые скрипты, БЕЗ admin.js -->
     <script src="js/config.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/particles.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/admin.js"></script>
 </body>
 </html>
