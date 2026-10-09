@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Olo'Kafu'áng - Клан На'ви</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;600&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <canvas id="particles-canvas"></canvas>
+    
+    <nav class="navbar">
+        <div class="logo">
+            <img src="assets/logo.svg" alt="Эйва" class="glow-icon">
+            <span class="clan-name-text font-orbitron text-glow"></span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Главная</a></li>
+            <li><a href="schedule.html">Сессии</a></li>
+            <li><a href="clan.html">Клан</a></li>
+            <li><a href="info.html">Инфо</a></li>
+            <li><a href="admin.html" class="admin-link">Админка</a></li>
+        </ul>
+        <div class="burger-menu">☰</div>
+    </nav>
+
+    <main class="hero-section">
+        <div class="hero-content">
+            <h1 class="clan-name-text font-cinzel title-glow neon-text"></h1>
+            <p class="clan-tagline-text font-inter subtitle"></p>
+            <p class="clan-desc-text font-inter desc"></p>
+            
+            <div class="social-buttons">
+                <a href="#" id="link-discord" target="_blank" class="btn btn-primary glow-box">Discord</a>
+                <a href="#" id="link-telegram" target="_blank" class="btn btn-secondary glow-box">Telegram</a>
+                <a href="#" id="link-tiktok" target="_blank" class="btn btn-secondary glow-box">TikTok</a>
+                <a href="#" id="link-youtube" target="_blank" class="btn btn-secondary glow-box">YouTube</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
