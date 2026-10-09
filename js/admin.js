@@ -1,16 +1,24 @@
-В этот код добавлены две важные вещи: загрузка текущих правил в текстовое поле при открытии админки и сохранение новых правил при нажатии кнопки «Сохранить изменения».
-
-Скопируй весь этот код и полностью замени им содержимое файла **`js/admin.js`**:
-
-```javascript
 function checkPassword() {
-    const input = document.getElementById("admin-password").value;
-    if (input === CONFIG.adminPassword) {
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("admin-dashboard").style.display = "block";
-        loadAdminData();
-    } else {
-        document.getElementById("login-error").style.display = "block";
+    try {
+        const input = document.getElementById("admin-password").value;
+        
+        // Надежная проверка: если CONFIG не загрузился, используем запасной пароль.
+        // Замени "твой_пароль" на свой реальный пароль!
+        const realPassword = (typeof CONFIG !== 'undefined' && CONFIG.adminPassword) ? CONFIG.adminPassword : "твой_пароль";
+
+        if (input === realPassword) {
+            document.getElementById("login-screen").style.display = "none";
+            
+            const dashboard = document.getElementById("admin-dashboard");
+            if (dashboard) dashboard.style.display = "block";
+            
+            loadAdminData();
+        } else {
+            const errorText = document.getElementById("login-error");
+            if (errorText) errorText.style.display = "block";
+        }
+    } catch (error) {
+        alert("Эйва сообщает об ошибке: " + error.message);
     }
 }
 
@@ -118,7 +126,7 @@ function saveMembers() {
             name: item.querySelector(".mem-name").value,
             rank: item.querySelector(".mem-rank").value,
             status: item.querySelector(".mem-status").value,
-            joined: new Date().toISOString().split('T')[0] // Оставляем текущую или можно добавить поле даты
+            joined: new Date().toISOString().split('T')[0]
         });
     });
     data.members = newMembers;
@@ -169,5 +177,3 @@ function resetData() {
         StorageManager.reset();
     }
 }
-
-```
