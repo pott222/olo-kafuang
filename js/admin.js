@@ -1,4 +1,8 @@
-// Авторизация
+В этот код добавлены две важные вещи: загрузка текущих правил в текстовое поле при открытии админки и сохранение новых правил при нажатии кнопки «Сохранить изменения».
+
+Скопируй весь этот код и полностью замени им содержимое файла **`js/admin.js`**:
+
+```javascript
 function checkPassword() {
     const input = document.getElementById("admin-password").value;
     if (input === CONFIG.adminPassword) {
@@ -32,6 +36,13 @@ function loadAdminData() {
     document.getElementById("edit-social-tiktok").value = data.clan.socials.tiktok;
     document.getElementById("edit-social-youtube").value = data.clan.socials.youtube;
 
+    // Загрузка правил (каждое правило с новой строки)
+    if (data.rules && data.rules.length > 0) {
+        document.getElementById("rules-input").value = data.rules.join('\n');
+    } else {
+        document.getElementById("rules-input").value = "";
+    }
+
     // Вкладка "Клан"
     renderMembersEditList(data);
 }
@@ -48,9 +59,16 @@ function saveGeneral() {
     data.clan.socials.tiktok = document.getElementById("edit-social-tiktok").value;
     data.clan.socials.youtube = document.getElementById("edit-social-youtube").value;
 
+    // Сохранение правил (разбиваем текст по строкам, убираем пустые)
+    const rulesText = document.getElementById("rules-input").value;
+    data.rules = rulesText.split('\n').map(rule => rule.trim()).filter(rule => rule !== "");
+
     StorageManager.save(data);
     alert("Настройки успешно сохранены!");
-    renderHeaderInfo(); // Обновляем шапку на лету
+    
+    // Обновляем шапку и правила на лету (если функция renderRules существует на странице)
+    if (typeof renderHeaderInfo === "function") renderHeaderInfo();
+    if (typeof renderRules === "function") renderRules();
 }
 
 // Рендер списка участников для редактирования
@@ -151,3 +169,5 @@ function resetData() {
         StorageManager.reset();
     }
 }
+
+```
