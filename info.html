@@ -14,19 +14,12 @@
     
     <nav class="navbar">
         <div class="logo">
-            <!-- Если ты переименовал логотип в hand.png, поменяй тут logo.svg на hand.png -->
-            <img src="assets/logo.svg" alt="Эйва" class="glow-icon">
+            <img src="assets/logo.jpg" alt="Эйва" class="glow-icon">
             <span class="clan-name-text font-orbitron text-glow"></span>
         </div>
         
-        <!-- Кнопка мобильного меню (бургер) -->
-        <div class="burger">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-
-        <ul class="nav-links">
+        <button class="burger-menu" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">☰</button>
+        <ul class="nav-links" id="primary-navigation">
             <li><a href="index.html">Главная</a></li>
             <li><a href="schedule.html">Сессии</a></li>
             <li><a href="clan.html">Клан</a></li>

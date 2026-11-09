@@ -1,17 +1,36 @@
-/* Авторизация */
+[hidden] {
+    display: none !important;
+}
+
+.admin-container {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 20px;
+    position: relative;
+    z-index: 10;
+}
+
 .admin-login {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 60vh;
+    min-height: 390px;
+    gap: 12px;
     text-align: center;
+    background: var(--bg-card);
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    max-width: 500px;
+    margin: 50px auto;
 }
 
 .admin-login input {
-    margin: 20px 0;
+    width: 100%;
+    margin: 12px 0;
     padding: 15px 20px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid var(--accent-blue);
     color: #fff;
@@ -19,13 +38,26 @@
     outline: none;
     text-align: center;
     font-family: 'Orbitron', sans-serif;
-    box-shadow: inset 0 0 10px rgba(0,229,255,0.2);
 }
 
-/* Дашборд (скрыт до ввода пароля) */
+.login-hint,
+.security-note {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.security-note {
+    max-width: 390px;
+    margin-top: 12px;
+    font-size: .8rem;
+}
+
+#login-error {
+    color: #ff7777;
+}
+
 .admin-dashboard {
-    display: none;
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 40px auto;
     background: var(--bg-card);
     border: 1px solid var(--glass-border);
@@ -34,7 +66,10 @@
     overflow: hidden;
 }
 
-/* Табы */
+.admin-dashboard:not([hidden]) {
+    display: block;
+}
+
 .admin-tabs {
     display: flex;
     background: rgba(0, 0, 0, 0.3);
@@ -43,42 +78,203 @@
 }
 
 .tab-btn {
-    flex: 1;
+    flex: 1 0 auto;
     padding: 15px;
     background: transparent;
     border: none;
     color: var(--text-muted);
     font-family: 'Orbitron', sans-serif;
-    font-size: 1rem;
+    font-size: .95rem;
     cursor: pointer;
-    transition: 0.3s;
+    transition: .3s;
     border-bottom: 3px solid transparent;
 }
 
-.tab-btn:hover { color: #fff; background: rgba(0,229,255,0.05); }
-.tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); background: rgba(0,229,255,0.1); }
-
-/* Контент табов */
-.tab-content { display: none; padding: 30px; }
-.tab-content.active { display: block; animation: fadeIn 0.3s; }
-
-/* Формы */
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; color: var(--accent-cyan); font-weight: 600; }
-.form-group input, .form-group textarea, .form-group select {
-    width: 100%; padding: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.3);
-    color: #fff; border-radius: 8px; font-family: 'Inter', sans-serif; transition: 0.3s;
+.tab-btn:hover {
+    color: #fff;
+    background: rgba(0, 229, 255, 0.05);
 }
-.form-group input:focus, .form-group textarea:focus { border-color: var(--accent-green); box-shadow: 0 0 10px rgba(124,245,179,0.2); outline: none; }
-.form-group textarea { resize: vertical; min-height: 100px; }
 
-/* Списки редактирования */
-.edit-list { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
-.edit-item { display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
-.edit-item input, .edit-item select { flex: 1; margin: 0; padding: 10px; }
+.tab-btn.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+    background: rgba(0, 229, 255, 0.1);
+}
 
-/* Кнопки */
-.action-buttons { display: flex; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
-.btn-danger { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border-color: #ff4d4d; }
-.btn-danger:hover { background: rgba(255, 77, 77, 0.2); box-shadow: 0 0 15px rgba(255,77,77,0.4); }
-.btn-small { padding: 8px 15px; font-size: 0.9rem; }
+.tab-content {
+    padding: 30px;
+}
+
+.tab-content.active {
+    animation: fadeIn .3s;
+}
+
+.tab-content h3 {
+    color: var(--accent-green);
+    margin-bottom: 20px;
+}
+
+.section-heading {
+    margin: 30px 0 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label,
+.editor-field {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea,
+.editor-field input,
+.editor-field textarea,
+.edit-item select {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    color: #fff;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    transition: .3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.editor-field input:focus,
+.editor-field textarea:focus,
+.edit-item select:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 10px rgba(124, 245, 179, 0.2);
+    outline: none;
+}
+
+.form-group textarea,
+.editor-field textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.edit-item {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 12px;
+    align-items: end;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.editor-field {
+    margin: 0;
+    font-size: .85rem;
+}
+
+.editor-field input,
+.editor-field textarea,
+.edit-item select {
+    margin-top: 7px;
+    min-width: 0;
+    font-size: .95rem;
+}
+
+.session-edit-item .session-description-input {
+    min-height: 44px;
+}
+
+.edit-item .btn {
+    align-self: end;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger {
+    background: rgba(255, 77, 77, 0.1);
+    color: #ff7777;
+    border-color: #ff4d4d;
+}
+
+.btn-danger:hover {
+    background: rgba(255, 77, 77, 0.2);
+    box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
+}
+
+.btn-small {
+    padding: 8px 15px;
+    font-size: .85rem;
+}
+
+.admin-status {
+    margin: 18px 30px 0;
+    padding: 12px 16px;
+    color: var(--accent-green);
+    background: rgba(124, 245, 179, .08);
+    border: 1px solid rgba(124, 245, 179, .25);
+    border-radius: 8px;
+}
+
+.admin-status.error {
+    color: #ff9999;
+    background: rgba(255, 77, 77, .08);
+    border-color: rgba(255, 77, 77, .35);
+}
+
+.system-description {
+    color: #ccc;
+    line-height: 1.6;
+}
+
+.import-label {
+    cursor: pointer;
+}
+
+.import-label input {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .admin-container {
+        margin: 20px auto;
+        padding: 12px;
+    }
+
+    .admin-login {
+        min-height: 350px;
+        margin: 24px auto;
+        padding: 24px 18px;
+    }
+
+    .tab-btn {
+        padding: 12px 14px;
+        font-size: .8rem;
+    }
+
+    .tab-content {
+        padding: 20px 15px;
+    }
+
+    .admin-status {
+        margin: 15px;
+    }
+}

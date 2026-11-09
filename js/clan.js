@@ -1,5 +1,10 @@
-document.addEventListener("DOMContentLoaded", () => {
-    renderClan();
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        await StorageManager.init();
+        renderClan();
+    } catch (error) {
+        showAppError(error);
+    }
 });
 
 function renderClan() {
@@ -7,40 +12,56 @@ function renderClan() {
     const container = document.getElementById("members-container");
     const statTotal = document.querySelector("#stat-total span");
     const statOnline = document.querySelector("#stat-online span");
+    if (!container || !statTotal || !statOnline) return;
 
-    container.innerHTML = "";
-    
+    container.replaceChildren();
     let onlineCount = 0;
-
-    // Сортировка: Лидеры сверху, новобранцы снизу
-    const sortedMembers = data.members.sort((a, b) => {
-        return data.ranks.indexOf(a.rank) - data.ranks.indexOf(b.rank);
-    });
+    const rankOrder = new Map(data.ranks.map((rank, index) => [rank, index]));
+    const sortedMembers = [...data.members].sort((a, b) =>
+        (rankOrder.get(a.rank) ?? Number.MAX_SAFE_INTEGER) -
+        (rankOrder.get(b.rank) ?? Number.MAX_SAFE_INTEGER)
+    );
 
     sortedMembers.forEach(member => {
         if (member.status === "online") onlineCount++;
 
-        const statusClass = member.status === "online" ? "status-online" : 
-                            (member.status === "reserve" ? "status-reserve" : "status-offline");
-        
-        const statusText = member.status === "online" ? "Онлайн" : 
-                           (member.status === "reserve" ? "В резерве" : "Офлайн");
+        const statusClass = member.status === "online" ? "status-online"
+            : member.status === "reserve" ? "status-reserve" : "status-offline";
+        const statusText = member.status === "online" ? "Онлайн"
+            : member.status === "reserve" ? "В резерве" : "Офлайн";
 
-        const card = document.createElement("div");
+        const card = document.createElement("article");
         card.className = "member-card glow-box";
-        card.innerHTML = `
-            <div class="member-avatar">${member.avatar || '👤'}</div>
-            <div class="member-name font-cinzel">${member.name}</div>
-            <div class="member-rank font-orbitron">${member.rank}</div>
-            <div>
-                <span class="status-dot ${statusClass}"></span>
-                <span style="font-size: 0.9rem; color: #ccc">${statusText}</span>
-            </div>
-            <div class="member-joined">В клане с: ${member.joined}</div>
-        `;
+
+        const avatar = document.createElement("div");
+        avatar.className = "member-avatar";
+        avatar.textContent = member.avatar || "👤";
+
+        const name = document.createElement("div");
+        name.className = "member-name font-cinzel";
+        name.textContent = member.name;
+
+        const rank = document.createElement("div");
+        rank.className = "member-rank font-orbitron";
+        rank.textContent = member.rank;
+
+        const status = document.createElement("div");
+        const dot = document.createElement("span");
+        dot.className = `status-dot ${statusClass}`;
+        dot.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.style.cssText = "font-size:.9rem;color:#ccc";
+        label.textContent = statusText;
+        status.append(dot, label);
+
+        const joined = document.createElement("div");
+        joined.className = "member-joined";
+        joined.textContent = member.joined ? `В клане с: ${member.joined}` : "";
+
+        card.append(avatar, name, rank, status, joined);
         container.appendChild(card);
     });
 
-    statTotal.textContent = data.members.length;
-    statOnline.textContent = onlineCount;
+    statTotal.textContent = String(data.members.length);
+    statOnline.textContent = String(onlineCount);
 }

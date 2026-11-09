@@ -107,6 +107,11 @@ body {
 .burger-menu {
     display: none;
     font-size: 1.8rem;
+    color: var(--accent-blue);
+    background: transparent;
+    border: 0;
+    padding: 6px 10px;
+    cursor: pointer;
 }
 
 /* Главный экран (Hero) */
@@ -186,7 +191,26 @@ body {
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .nav-links { display: none; }
+    .navbar { position: sticky; }
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        padding: 10px 5%;
+        background: rgba(5, 11, 20, 0.96);
+        border-bottom: 1px solid var(--glass-border);
+    }
+    .nav-links.active { display: flex; }
+    .nav-links a { display: block; padding: 12px 0; }
     .burger-menu { display: block; }
     .hero-content h1 { font-size: 3rem; }
+}
+
+@media (pointer: coarse) {
+    *, *::before, *::after { cursor: auto !important; }
+    a, button { cursor: pointer !important; }
 }

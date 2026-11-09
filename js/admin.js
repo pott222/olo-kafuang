@@ -1,204 +1,387 @@
-function checkPassword() {
+document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const input = document.getElementById("admin-password").value;
-        
-        // Надежная проверка пароля
-        // ЗАМЕНИ "твой_пароль" НА СВОЙ РЕАЛЬНЫЙ ПАРОЛЬ!
-        const realPassword = (typeof CONFIG !== 'undefined' && CONFIG.adminPassword) ? CONFIG.adminPassword : "твой_пароль";
-
-        if (input === realPassword) {
-            document.getElementById("login-screen").style.display = "none";
-            const dashboard = document.getElementById("admin-dashboard");
-            if (dashboard) dashboard.style.display = "block";
-            loadAdminData();
-        } else {
-            const errorText = document.getElementById("login-error");
-            if (errorText) errorText.style.display = "block";
-        }
+        await StorageManager.init();
+        bindAdminEvents();
     } catch (error) {
-        alert("Эйва сообщает об ошибке: " + error.message);
+        showStatus(`Не удалось загрузить данные: ${error.message}`, true);
     }
+});
+
+function bindAdminEvents() {
+    const loginForm = document.getElementById("login-screen");
+    const dashboard = document.getElementById("admin-dashboard");
+
+    loginForm.addEventListener("submit", event => {
+        event.preventDefault();
+        checkPassword();
+    });
+
+    dashboard.addEventListener("click", event => {
+        const tabButton = event.target.closest("[data-tab]");
+        if (tabButton) {
+            openTab(tabButton.dataset.tab, tabButton);
+            return;
+        }
+
+        const actionButton = event.target.closest("[data-action]");
+        if (!actionButton) return;
+
+        const actions = {
+            "save-general": saveGeneral,
+            "add-member": addNewMember,
+            "save-members": saveMembers,
+            "add-session": addNewSession,
+            "save-sessions": saveSessions,
+            export: exportJSON,
+            reset: resetData
+        };
+        const action = actions[actionButton.dataset.action];
+        if (action) action();
+
+        if (actionButton.dataset.action === "remove-member") {
+            actionButton.closest(".edit-item")?.remove();
+        } else if (actionButton.dataset.action === "remove-session") {
+            actionButton.closest(".edit-item")?.remove();
+        }
+    });
+
+    document.getElementById("import-file").addEventListener("change", importJSON);
 }
 
-// Переключение вкладок
-function openTab(tabId) {
-    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
-    document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
-    document.getElementById(tabId).classList.add("active");
-    event.currentTarget.classList.add("active");
+function checkPassword() {
+    const input = document.getElementById("admin-password");
+    const errorText = document.getElementById("login-error");
+    const password = typeof CONFIG !== "undefined" ? CONFIG.adminPassword : "";
+
+    if (password && input.value === password) {
+        document.getElementById("login-screen").hidden = true;
+        const dashboard = document.getElementById("admin-dashboard");
+        dashboard.hidden = false;
+        loadAdminData();
+        return;
+    }
+
+    errorText.hidden = false;
+    input.value = "";
+    input.focus();
 }
 
-// Вспомогательная функция для безопасной загрузки
+function openTab(tabId, button) {
+    const target = document.getElementById(tabId);
+    if (!target) return;
+
+    document.querySelectorAll(".tab-content").forEach(panel => {
+        const active = panel === target;
+        panel.hidden = !active;
+        panel.classList.toggle("active", active);
+    });
+    document.querySelectorAll(".tab-btn").forEach(tab => {
+        const active = tab === button;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+    });
+}
+
 function safeSetValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value || "";
+    const element = document.getElementById(id);
+    if (element) element.value = value ?? "";
 }
 
-// Загрузка данных в формы
 function loadAdminData() {
     const data = StorageManager.get();
-    
-    // Вкладка "Главная"
     safeSetValue("edit-clan-name", data.clan.name);
     safeSetValue("edit-clan-tagline", data.clan.tagline);
     safeSetValue("edit-clan-desc", data.clan.description);
-    
-    if (data.clan.socials) {
-        safeSetValue("edit-social-discord", data.clan.socials.discord);
-        safeSetValue("edit-social-telegram", data.clan.socials.telegram);
-        safeSetValue("edit-social-tiktok", data.clan.socials.tiktok);
-        safeSetValue("edit-social-youtube", data.clan.socials.youtube);
-    }
-
-    // Загрузка правил (каждое правило с новой строки)
-    const rulesEl = document.getElementById("rules-input");
-    if (rulesEl) {
-        rulesEl.value = (data.rules && data.rules.length > 0) ? data.rules.join('\n') : "";
-    }
-
-    // Вкладка "Клан"
+    safeSetValue("edit-social-discord", data.clan.socials.discord);
+    safeSetValue("edit-social-telegram", data.clan.socials.telegram);
+    safeSetValue("edit-social-tiktok", data.clan.socials.tiktok);
+    safeSetValue("edit-social-youtube", data.clan.socials.youtube);
+    safeSetValue("rules-input", data.rules.join("\n"));
     renderMembersEditList(data);
+    renderSessionsEditList(data);
 }
 
-// Сохранение вкладки "Главная"
-function saveGeneral() {
-    const data = StorageManager.get();
-    
-    const nameEl = document.getElementById("edit-clan-name");
-    if (nameEl) data.clan.name = nameEl.value;
-
-    const taglineEl = document.getElementById("edit-clan-tagline");
-    if (taglineEl) data.clan.tagline = taglineEl.value;
-
-    const descEl = document.getElementById("edit-clan-desc");
-    if (descEl) data.clan.description = descEl.value;
-    
-    if (!data.clan.socials) data.clan.socials = {};
-    
-    const discordEl = document.getElementById("edit-social-discord");
-    if (discordEl) data.clan.socials.discord = discordEl.value;
-    
-    const tgEl = document.getElementById("edit-social-telegram");
-    if (tgEl) data.clan.socials.telegram = tgEl.value;
-    
-    const ttEl = document.getElementById("edit-social-tiktok");
-    if (ttEl) data.clan.socials.tiktok = ttEl.value;
-    
-    const ytEl = document.getElementById("edit-social-youtube");
-    if (ytEl) data.clan.socials.youtube = ytEl.value;
-
-    // Сохранение правил
-    const rulesEl = document.getElementById("rules-input");
-    if (rulesEl) {
-        data.rules = rulesEl.value.split('\n').map(rule => rule.trim()).filter(rule => rule !== "");
+function showStatus(message, isError = false) {
+    const status = document.getElementById("admin-status");
+    if (!status) {
+        console.error(message);
+        return;
     }
-
-    StorageManager.save(data);
-    alert("Настройки успешно сохранены!");
-    
-    if (typeof renderHeaderInfo === "function") renderHeaderInfo();
-    if (typeof renderRules === "function") renderRules();
+    status.hidden = false;
+    status.textContent = message;
+    status.classList.toggle("error", isError);
 }
 
-// Рендер списка участников для редактирования
+function saveGeneral() {
+    try {
+        const data = StorageManager.get();
+        const name = document.getElementById("edit-clan-name").value.trim();
+        if (!name) throw new Error("Укажи название клана.");
+
+        const socials = {
+            discord: document.getElementById("edit-social-discord").value.trim(),
+            telegram: document.getElementById("edit-social-telegram").value.trim(),
+            tiktok: document.getElementById("edit-social-tiktok").value.trim(),
+            youtube: document.getElementById("edit-social-youtube").value.trim()
+        };
+        for (const [service, value] of Object.entries(socials)) {
+            if (value && !isHttpUrl(value)) {
+                throw new Error(`Для ${service} укажи ссылку, начинающуюся с http:// или https://.`);
+            }
+        }
+
+        data.clan.name = name;
+        data.clan.tagline = document.getElementById("edit-clan-tagline").value.trim();
+        data.clan.description = document.getElementById("edit-clan-desc").value.trim();
+        data.clan.socials = socials;
+        data.rules = document.getElementById("rules-input").value
+            .split(/\r?\n/)
+            .map(rule => rule.trim())
+            .filter(Boolean);
+
+        StorageManager.save(data);
+        if (typeof renderHeaderInfo === "function") renderHeaderInfo();
+        if (typeof renderRules === "function") renderRules();
+        showStatus("Настройки клана и правила сохранены в этом браузере.");
+    } catch (error) {
+        showStatus(`Не удалось сохранить настройки: ${error.message}`, true);
+    }
+}
+
+function createField(labelText, className, value, type = "text") {
+    const label = document.createElement("label");
+    label.className = "editor-field";
+    label.append(document.createTextNode(labelText));
+
+    const input = document.createElement(type === "textarea" ? "textarea" : "input");
+    if (type !== "textarea") input.type = type;
+    input.className = className;
+    input.value = value ?? "";
+    label.appendChild(input);
+    return label;
+}
+
+function createSelect(className, options, value) {
+    const select = document.createElement("select");
+    select.className = className;
+    options.forEach(option => {
+        const item = document.createElement("option");
+        item.value = option.value;
+        item.textContent = option.label;
+        item.selected = option.value === value;
+        select.appendChild(item);
+    });
+    return select;
+}
+
+function createRemoveButton(action, label) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-danger btn-small";
+    button.dataset.action = action;
+    button.textContent = label;
+    return button;
+}
+
+function nextId(items) {
+    const ids = new Set(items.map(item => String(item.id)));
+    let id = Date.now();
+    while (ids.has(String(id))) id++;
+    return id;
+}
+
 function renderMembersEditList(data) {
     const container = document.getElementById("members-edit-list");
-    if (!container) return; // Защита от ошибки, если элемента нет
-    container.innerHTML = "";
-    
-    if (!data.members) return;
+    container.replaceChildren();
 
-    data.members.forEach((m, index) => {
-        const div = document.createElement("div");
-        div.className = "edit-item";
-        
-        let rankOptions = data.ranks.map(r => `<option value="${r}" ${m.rank === r ? 'selected' : ''}>${r}</option>`).join('');
-        let statusOptions = `
-            <option value="online" ${m.status === 'online' ? 'selected' : ''}>Онлайн</option>
-            <option value="offline" ${m.status === 'offline' ? 'selected' : ''}>Офлайн</option>
-            <option value="reserve" ${m.status === 'reserve' ? 'selected' : ''}>Резерв</option>
-        `;
-
-        div.innerHTML = `
-            <input type="text" value="${m.avatar}" class="mem-avatar" style="max-width: 60px; text-align: center;" placeholder="Эмодзи">
-            <input type="text" value="${m.name}" class="mem-name" placeholder="Имя воина">
-            <select class="mem-rank">${rankOptions}</select>
-            <select class="mem-status">${statusOptions}</select>
-            <button class="btn btn-danger btn-small" onclick="removeMember(this)">Удалить</button>
-        `;
-        container.appendChild(div);
+    data.members.forEach(member => {
+        const row = document.createElement("div");
+        row.className = "edit-item member-edit-item";
+        row.dataset.id = String(member.id ?? Date.now());
+        row.dataset.joined = member.joined ?? "";
+        row.append(
+            createField("Аватар", "mem-avatar", member.avatar || "👤"),
+            createField("Имя", "mem-name", member.name),
+            createSelect("mem-rank", data.ranks.map(rank => ({ value: rank, label: rank })), member.rank),
+            createSelect("mem-status", [
+                { value: "online", label: "Онлайн" },
+                { value: "offline", label: "Офлайн" },
+                { value: "reserve", label: "Резерв" }
+            ], member.status),
+            createRemoveButton("remove-member", "Удалить")
+        );
+        container.appendChild(row);
     });
 }
 
 function addNewMember() {
     const data = StorageManager.get();
-    if (!data.members) data.members = [];
-    data.members.push({ id: Date.now(), name: "Новый воин", rank: "Новобранец", status: "offline", joined: new Date().toISOString().split('T')[0], avatar: "👤" });
+    data.members.push({
+        id: nextId(data.members),
+        name: "",
+        rank: data.ranks[data.ranks.length - 1] || "Новобранец",
+        status: "offline",
+        joined: new Date().toISOString().slice(0, 10),
+        avatar: "👤"
+    });
     renderMembersEditList(data);
-}
-
-function removeMember(btn) {
-    btn.parentElement.remove();
+    document.querySelector("#members-edit-list .edit-item:last-child .mem-name").focus();
 }
 
 function saveMembers() {
-    const data = StorageManager.get();
-    const newMembers = [];
-    document.querySelectorAll(".edit-item").forEach((item, index) => {
-        newMembers.push({
-            id: index + 1,
-            avatar: item.querySelector(".mem-avatar").value,
-            name: item.querySelector(".mem-name").value,
-            rank: item.querySelector(".mem-rank").value,
-            status: item.querySelector(".mem-status").value,
-            joined: new Date().toISOString().split('T')[0]
+    try {
+        const data = StorageManager.get();
+        const rows = [...document.querySelectorAll("#members-edit-list .edit-item")];
+        const members = rows.map((row, index) => {
+            const name = row.querySelector(".mem-name").value.trim();
+            if (!name) throw new Error(`Укажи имя участника №${index + 1}.`);
+            return {
+                id: row.dataset.id || Date.now() + index,
+                avatar: row.querySelector(".mem-avatar").value.trim() || "👤",
+                name,
+                rank: row.querySelector(".mem-rank").value,
+                status: row.querySelector(".mem-status").value,
+                joined: row.dataset.joined || new Date().toISOString().slice(0, 10)
+            };
         });
-    });
-    data.members = newMembers;
-    StorageManager.save(data);
-    alert("Состав клана обновлен!");
+        data.members = members;
+        StorageManager.save(data);
+        showStatus("Состав клана сохранён в этом браузере.");
+    } catch (error) {
+        showStatus(`Не удалось сохранить состав: ${error.message}`, true);
+    }
 }
 
-// Экспорт / Импорт / Сброс JSON
-function exportJSON() {
+function renderSessionsEditList(data) {
+    const container = document.getElementById("sessions-edit-list");
+    container.replaceChildren();
+
+    data.sessions.forEach(session => {
+        const row = document.createElement("div");
+        row.className = "edit-item session-edit-item";
+        row.dataset.id = String(session.id ?? Date.now());
+        row.append(
+            createField("Название", "session-title-input", session.title),
+            createField("Дата", "session-date-input", session.date, "date"),
+            createField("Время", "session-time-input", session.time, "time"),
+            createField("Мест", "session-slots-input", session.slots, "number"),
+            createField("Записано", "session-taken-input", session.taken, "number"),
+            createSelect("session-status-input", [
+                { value: "planned", label: "Запланирована" },
+                { value: "completed", label: "Завершена" }
+            ], session.status === "completed" ? "completed" : "planned"),
+            createField("Описание", "session-description-input", session.description, "textarea"),
+            createRemoveButton("remove-session", "Удалить")
+        );
+        row.querySelector(".session-slots-input").min = "1";
+        row.querySelector(".session-taken-input").min = "0";
+        container.appendChild(row);
+    });
+}
+
+function addNewSession() {
     const data = StorageManager.get();
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "default-data.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    data.sessions.push({
+        id: nextId(data.sessions),
+        title: "",
+        date: new Date().toISOString().slice(0, 10),
+        time: "20:00",
+        description: "",
+        slots: 10,
+        taken: 0,
+        status: "planned"
+    });
+    renderSessionsEditList(data);
+    document.querySelector("#sessions-edit-list .edit-item:last-child .session-title-input").focus();
+}
+
+function saveSessions() {
+    try {
+        const data = StorageManager.get();
+        const rows = [...document.querySelectorAll("#sessions-edit-list .edit-item")];
+        const sessions = rows.map((row, index) => {
+            const title = row.querySelector(".session-title-input").value.trim();
+            const date = row.querySelector(".session-date-input").value;
+            const time = row.querySelector(".session-time-input").value;
+            const slots = Number(row.querySelector(".session-slots-input").value);
+            const taken = Number(row.querySelector(".session-taken-input").value);
+            if (!title || !date || !time) {
+                throw new Error(`Заполни название, дату и время сессии №${index + 1}.`);
+            }
+            if (!Number.isInteger(slots) || slots < 1 ||
+                !Number.isInteger(taken) || taken < 0 || taken > slots) {
+                throw new Error(`Проверь количество мест и записанных для сессии №${index + 1}.`);
+            }
+            return {
+                id: row.dataset.id || Date.now() + index,
+                title,
+                date,
+                time,
+                description: row.querySelector(".session-description-input").value.trim(),
+                slots,
+                taken,
+                status: row.querySelector(".session-status-input").value
+            };
+        });
+        data.sessions = sessions;
+        StorageManager.save(data);
+        showStatus("Сессии сохранены в этом браузере.");
+    } catch (error) {
+        showStatus(`Не удалось сохранить сессии: ${error.message}`, true);
+    }
+}
+
+function isHttpUrl(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+        return false;
+    }
+}
+
+function exportJSON() {
+    try {
+        const data = StorageManager.get();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "default-data.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showStatus("Резервная копия JSON скачана.");
+    } catch (error) {
+        showStatus(`Не удалось экспортировать данные: ${error.message}`, true);
+    }
 }
 
 function importJSON(event) {
-    const file = event.target.files[0];
+    const input = event.target;
+    const file = input.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onerror = () => showStatus("Не удалось прочитать выбранный файл.", true);
+    reader.onload = () => {
         try {
-            const json = JSON.parse(e.target.result);
-            if (json.clan && json.members) {
-                StorageManager.save(json);
-                alert("Данные успешно импортированы! Страница будет перезагружена.");
-                location.reload();
-            } else {
-                alert("Неверный формат файла данных.");
-            }
-        } catch (err) {
-            alert("Ошибка чтения JSON.");
+            const data = normalizeData(JSON.parse(reader.result));
+            StorageManager.save(data);
+            loadAdminData();
+            if (typeof renderHeaderInfo === "function") renderHeaderInfo();
+            if (typeof renderRules === "function") renderRules();
+            showStatus("Данные импортированы и сохранены в этом браузере.");
+        } catch (error) {
+            showStatus(`Импорт отменён: ${error.message}`, true);
+        } finally {
+            input.value = "";
         }
     };
     reader.readAsText(file);
 }
 
 function resetData() {
-    if (confirm("Вы уверены? Это удалит локальные изменения и загрузит стандартные данные (из default-data.json).")) {
+    if (confirm("Сбросить локальные изменения и загрузить стандартные данные из data/default-data.json?")) {
         StorageManager.reset();
     }
 }
