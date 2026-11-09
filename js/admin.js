@@ -13,7 +13,9 @@ function bindAdminEvents() {
 
     loginForm.addEventListener("submit", event => {
         event.preventDefault();
-        checkPassword();
+        checkPassword().catch(error => {
+            showStatus(`Не удалось проверить пароль: ${error.message}`, true);
+        });
     });
 
     dashboard.addEventListener("click", event => {
@@ -48,12 +50,21 @@ function bindAdminEvents() {
     document.getElementById("import-file").addEventListener("change", importJSON);
 }
 
-function checkPassword() {
+async function checkPassword() {
     const input = document.getElementById("admin-password");
     const errorText = document.getElementById("login-error");
-    const password = typeof CONFIG !== "undefined" ? CONFIG.adminPassword : "";
+    const expectedHash = typeof CONFIG !== "undefined" ? CONFIG.adminPasswordSha256 : "";
+    if (!expectedHash || !window.crypto?.subtle) {
+        throw new Error("Проверка пароля доступна только через HTTPS или localhost.");
+    }
 
-    if (password && input.value === password) {
+    const passwordBytes = new TextEncoder().encode(input.value);
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", passwordBytes);
+    const actualHash = Array.from(new Uint8Array(hashBuffer), byte =>
+        byte.toString(16).padStart(2, "0")
+    ).join("");
+
+    if (actualHash === expectedHash) {
         document.getElementById("login-screen").hidden = true;
         const dashboard = document.getElementById("admin-dashboard");
         dashboard.hidden = false;
