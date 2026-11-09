@@ -2,7 +2,7 @@ const DEFAULT_FALLBACK = {
     clan: {
         name: "Olo'Kafu'áng",
         tagline: "Мы — те, кто слышит Эйву",
-        description: "Клан Olo'Kafu'áng объединяет сильнейших воинов и мудрейших целителей. Мы чтим законы природы и защищаем наши земли от небесных людей.",
+        description: "",
         socials: { tiktok: "", telegram: "", discord: "", youtube: "" }
     },
     sessions: [],
@@ -77,61 +77,103 @@ function normalizeData(data) {
     return result;
 }
 
+function backendErrorMessage(error) {
+    if (error?.code === "PGRST116") {
+        return "В Supabase не найдены начальные данные. Выполни SQL-файл supabase/setup.sql в SQL Editor.";
+    }
+    if (error?.code === "42P01" || error?.code === "PGRST205") {
+        return "Таблица сайта не найдена. Выполни SQL-файл supabase/setup.sql в SQL Editor.";
+    }
+    return error?.message || "Неизвестная ошибка Supabase.";
+}
+
 const StorageManager = {
+    client: null,
+    data: null,
     initPromise: null,
 
     init() {
         if (!this.initPromise) {
-            this.initPromise = this.loadInitialData();
+            this.initPromise = this.connect();
         }
         return this.initPromise;
     },
 
-    async loadInitialData() {
-        const saved = localStorage.getItem(CONFIG.storageKey);
-        if (saved !== null) {
-            try {
-                const normalized = normalizeData(JSON.parse(saved));
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(normalized));
-                return;
-            } catch (error) {
-                throw new Error(`Не удалось прочитать сохранённые данные сайта: ${error.message}`);
-            }
+    async connect() {
+        if (!CONFIG.supabaseUrl || CONFIG.supabaseUrl.includes("YOUR_PROJECT_ID") ||
+            !CONFIG.supabaseAnonKey || CONFIG.supabaseAnonKey.includes("YOUR_SUPABASE")) {
+            throw new Error("Сначала подключи проект Supabase: заполни URL и Publishable key в js/config.js.");
+        }
+        if (!window.supabase?.createClient) {
+            throw new Error("Не загрузилась библиотека Supabase. Проверь подключение к интернету и обнови страницу.");
         }
 
-        let data;
-        try {
-            const response = await fetch("./data/default-data.json");
-            if (!response.ok) {
-                throw new Error(`Сервер ответил ${response.status}`);
-            }
-            data = normalizeData(await response.json());
-        } catch (error) {
-            if (location.protocol !== "file:") {
-                throw new Error(`Не удалось загрузить data/default-data.json: ${error.message}`);
-            }
-            console.warn("Файл данных недоступен при открытии через file://, используются встроенные данные.", error);
-            data = JSON.parse(JSON.stringify(DEFAULT_FALLBACK));
-        }
+        this.client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+        await this.reload();
 
-        this.save(data);
+        this.client.auth.onAuthStateChange((_event, session) => {
+            window.dispatchEvent(new CustomEvent("site-auth-change", { detail: session?.user ?? null }));
+        });
+    },
+
+    async reload() {
+        const { data, error } = await this.client
+            .from("site_content")
+            .select("data")
+            .eq("id", 1)
+            .single();
+
+        if (error) {
+            throw new Error(backendErrorMessage(error));
+        }
+        this.data = normalizeData(data.data);
     },
 
     get() {
-        const saved = localStorage.getItem(CONFIG.storageKey);
-        return normalizeData(saved === null
-            ? JSON.parse(JSON.stringify(DEFAULT_FALLBACK))
-            : JSON.parse(saved));
+        if (!this.data) {
+            throw new Error("Данные сайта ещё не загружены.");
+        }
+        return JSON.parse(JSON.stringify(this.data));
     },
 
-    save(data) {
+    async save(data) {
         const normalized = normalizeData(data);
-        localStorage.setItem(CONFIG.storageKey, JSON.stringify(normalized));
-        return normalized;
+        const { data: saved, error } = await this.client
+            .from("site_content")
+            .update({ data: normalized, updated_at: new Date().toISOString() })
+            .eq("id", 1)
+            .select("data")
+            .single();
+
+        if (error) {
+            if (error.code === "PGRST116" || error.code === "42501") {
+                throw new Error("Supabase отклонил изменение. Проверь, что у аккаунта в app_metadata установлено role = admin, затем выйди и войди снова.");
+            }
+            throw new Error(backendErrorMessage(error));
+        }
+        this.data = normalizeData(saved.data);
+        return this.get();
     },
 
-    reset() {
-        localStorage.removeItem(CONFIG.storageKey);
-        location.reload();
+    async signIn(email, password) {
+        const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data.user;
+    },
+
+    async currentUser() {
+        const { data, error } = await this.client.auth.getUser();
+        if (error) {
+            if (error.name === "AuthSessionMissingError") return null;
+            throw new Error(error.message);
+        }
+        return data.user;
+    },
+
+    async signOut() {
+        const { error } = await this.client.auth.signOut();
+        if (error) throw new Error(error.message);
     }
 };

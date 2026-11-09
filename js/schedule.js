@@ -11,7 +11,8 @@ function renderSessions() {
     const container = document.getElementById("sessions-container");
     if (!container) return;
 
-    const sessions = StorageManager.get().sessions;
+    const data = StorageManager.get();
+    const sessions = data.sessions;
     container.replaceChildren();
 
     if (sessions.length === 0) {
@@ -56,33 +57,30 @@ function renderSessions() {
         count.textContent = `${taken} / ${slots}`;
         slotsInfo.appendChild(count);
 
-        const button = document.createElement("button");
-        button.type = "button";
+        const discordUrl = data.clan.socials.discord;
+        const button = document.createElement(isCompleted || isFull || !isHttpUrl(discordUrl) ? "button" : "a");
         button.className = "btn btn-primary glow-box join-btn";
-        button.dataset.sessionId = String(session.id);
-        button.disabled = isFull || isCompleted;
-        button.textContent = isCompleted ? "Охота окончена" : isFull ? "Мест нет" : "Присоединиться";
-        button.addEventListener("click", () => joinSession(session.id));
+        if (isCompleted || isFull || !isHttpUrl(discordUrl)) {
+            button.type = "button";
+            button.disabled = true;
+            button.textContent = isCompleted ? "Охота окончена" : isFull ? "Мест нет" : "Связь Discord не настроена";
+        } else {
+            button.href = discordUrl;
+            button.target = "_blank";
+            button.rel = "noopener noreferrer";
+            button.textContent = "Записаться в Discord";
+        }
 
         card.append(header, info, slotsInfo, button);
         container.appendChild(card);
     });
 }
 
-function joinSession(id) {
-    const data = StorageManager.get();
-    const session = data.sessions.find(item => String(item.id) === String(id));
-    if (!session || session.status === "completed" || Number(session.taken) >= Number(session.slots)) return;
-
-    const name = prompt("Назови свое имя, воин (для записи):");
-    if (!name || !name.trim()) return;
-
-    session.taken = Number(session.taken) + 1;
+function isHttpUrl(value) {
     try {
-        StorageManager.save(data);
-        renderSessions();
-        alert(`Эйва видит тебя, ${name.trim()}. Ты записан!`);
-    } catch (error) {
-        alert(`Не удалось сохранить запись: ${error.message}`);
+        const url = new URL(value);
+        return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+        return false;
     }
 }

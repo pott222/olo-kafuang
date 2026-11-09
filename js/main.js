@@ -12,28 +12,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function showAppError(error) {
     console.error(error);
+    if (document.getElementById("app-error")) return;
     const notice = document.createElement("p");
+    notice.id = "app-error";
     notice.setAttribute("role", "alert");
-    notice.textContent = `Не удалось загрузить данные сайта. Проверьте data/default-data.json и обновите страницу. Подробности: ${error.message}`;
+    notice.textContent = `Не удалось загрузить данные сайта. Проверь настройки Supabase и права доступа к таблице site_content. Подробности: ${error.message}`;
     notice.style.cssText = "position:relative;z-index:10000;margin:1rem;padding:1rem;background:#3a1111;color:#fff;border:1px solid #ff6b6b;border-radius:8px";
     document.body.prepend(notice);
-
-    if (error.message.includes("сохранённые данные")) {
-        const resetButton = document.createElement("button");
-        resetButton.type = "button";
-        resetButton.textContent = "Сбросить повреждённые локальные данные";
-        resetButton.style.cssText = "position:relative;z-index:10000;margin:0 1rem;padding:.7rem";
-        resetButton.addEventListener("click", () => {
-            if (!confirm("Удалить повреждённые локальные данные и загрузить значения по умолчанию?")) return;
-            try {
-                localStorage.removeItem(CONFIG.storageKey);
-                location.reload();
-            } catch (resetError) {
-                showAppError(resetError);
-            }
-        });
-        document.body.prepend(resetButton);
-    }
 }
 
 function initCustomCursor() {

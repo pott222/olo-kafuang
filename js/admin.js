@@ -1,7 +1,13 @@
 document.addEventListener("DOMContentLoaded", async () => {
+    bindAdminEvents();
     try {
         await StorageManager.init();
-        bindAdminEvents();
+        window.addEventListener("site-auth-change", event => {
+            updateAdminAccess(event.detail).catch(error => {
+                showStatus(`Не удалось обновить состояние входа: ${error.message}`, true);
+            });
+        });
+        await updateAdminAccess(await StorageManager.currentUser());
     } catch (error) {
         showStatus(`Не удалось загрузить данные: ${error.message}`, true);
     }
@@ -13,8 +19,8 @@ function bindAdminEvents() {
 
     loginForm.addEventListener("submit", event => {
         event.preventDefault();
-        checkPassword().catch(error => {
-            showStatus(`Не удалось проверить пароль: ${error.message}`, true);
+        signInAdmin().catch(error => {
+            showStatus(`Не удалось выполнить вход: ${error.message}`, true);
         });
     });
 
@@ -35,10 +41,14 @@ function bindAdminEvents() {
             "add-session": addNewSession,
             "save-sessions": saveSessions,
             export: exportJSON,
-            reset: resetData
+            "sign-out": signOut
         };
         const action = actions[actionButton.dataset.action];
-        if (action) action();
+        if (action) {
+            Promise.resolve(action()).catch(error => {
+                showStatus(`Операция не выполнена: ${error.message}`, true);
+            });
+        }
 
         if (actionButton.dataset.action === "remove-member") {
             actionButton.closest(".edit-item")?.remove();
@@ -48,33 +58,61 @@ function bindAdminEvents() {
     });
 
     document.getElementById("import-file").addEventListener("change", importJSON);
+    document.getElementById("unprivileged-sign-out").addEventListener("click", () => {
+        signOut().catch(error => showStatus(`Не удалось выйти: ${error.message}`, true));
+    });
 }
 
-async function checkPassword() {
-    const input = document.getElementById("admin-password");
+async function signInAdmin() {
+    const email = document.getElementById("admin-email").value.trim();
+    const password = document.getElementById("admin-password").value;
     const errorText = document.getElementById("login-error");
-    const expectedHash = typeof CONFIG !== "undefined" ? CONFIG.adminPasswordSha256 : "";
-    if (!expectedHash || !window.crypto?.subtle) {
-        throw new Error("Проверка пароля доступна только через HTTPS или localhost.");
+    errorText.hidden = true;
+    try {
+        const user = await StorageManager.signIn(email, password);
+        document.getElementById("admin-password").value = "";
+        await updateAdminAccess(user);
+    } catch (error) {
+        errorText.textContent = `Не удалось войти: ${error.message}`;
+        errorText.hidden = false;
     }
+}
 
-    const passwordBytes = new TextEncoder().encode(input.value);
-    const hashBuffer = await window.crypto.subtle.digest("SHA-256", passwordBytes);
-    const actualHash = Array.from(new Uint8Array(hashBuffer), byte =>
-        byte.toString(16).padStart(2, "0")
-    ).join("");
+async function updateAdminAccess(user) {
+    const login = document.getElementById("login-screen");
+    const dashboard = document.getElementById("admin-dashboard");
+    const errorText = document.getElementById("login-error");
+    const logoutButton = document.getElementById("unprivileged-sign-out");
 
-    if (actualHash === expectedHash) {
-        document.getElementById("login-screen").hidden = true;
-        const dashboard = document.getElementById("admin-dashboard");
-        dashboard.hidden = false;
-        loadAdminData();
+    if (!user) {
+        login.hidden = false;
+        dashboard.hidden = true;
+        logoutButton.hidden = true;
         return;
     }
 
-    errorText.hidden = false;
-    input.value = "";
-    input.focus();
+    if (user.app_metadata?.role !== "admin") {
+        login.hidden = false;
+        dashboard.hidden = true;
+        logoutButton.hidden = false;
+        errorText.textContent = "У аккаунта нет прав администратора. Попроси владельца проекта назначить роль admin в app_metadata.";
+        errorText.hidden = false;
+        return;
+    }
+
+    errorText.hidden = true;
+    logoutButton.hidden = true;
+    login.hidden = true;
+    dashboard.hidden = false;
+    document.getElementById("admin-user").textContent = `Вошёл как ${user.email}`;
+    loadAdminData();
+}
+
+async function signOut() {
+    await StorageManager.signOut();
+    document.getElementById("admin-password").value = "";
+    document.getElementById("login-error").hidden = true;
+    await updateAdminAccess(null);
 }
 
 function openTab(tabId, button) {
@@ -123,7 +161,7 @@ function showStatus(message, isError = false) {
     status.classList.toggle("error", isError);
 }
 
-function saveGeneral() {
+async function saveGeneral() {
     try {
         const data = StorageManager.get();
         const name = document.getElementById("edit-clan-name").value.trim();
@@ -150,10 +188,10 @@ function saveGeneral() {
             .map(rule => rule.trim())
             .filter(Boolean);
 
-        StorageManager.save(data);
+        await StorageManager.save(data);
         if (typeof renderHeaderInfo === "function") renderHeaderInfo();
         if (typeof renderRules === "function") renderRules();
-        showStatus("Настройки клана и правила сохранены в этом браузере.");
+        showStatus("Настройки клана и правила опубликованы.");
     } catch (error) {
         showStatus(`Не удалось сохранить настройки: ${error.message}`, true);
     }
@@ -239,7 +277,7 @@ function addNewMember() {
     document.querySelector("#members-edit-list .edit-item:last-child .mem-name").focus();
 }
 
-function saveMembers() {
+async function saveMembers() {
     try {
         const data = StorageManager.get();
         const rows = [...document.querySelectorAll("#members-edit-list .edit-item")];
@@ -256,8 +294,8 @@ function saveMembers() {
             };
         });
         data.members = members;
-        StorageManager.save(data);
-        showStatus("Состав клана сохранён в этом браузере.");
+        await StorageManager.save(data);
+        showStatus("Состав клана обновлён на сайте.");
     } catch (error) {
         showStatus(`Не удалось сохранить состав: ${error.message}`, true);
     }
@@ -306,7 +344,7 @@ function addNewSession() {
     document.querySelector("#sessions-edit-list .edit-item:last-child .session-title-input").focus();
 }
 
-function saveSessions() {
+async function saveSessions() {
     try {
         const data = StorageManager.get();
         const rows = [...document.querySelectorAll("#sessions-edit-list .edit-item")];
@@ -335,8 +373,8 @@ function saveSessions() {
             };
         });
         data.sessions = sessions;
-        StorageManager.save(data);
-        showStatus("Сессии сохранены в этом браузере.");
+        await StorageManager.save(data);
+        showStatus("Сессии обновлены на сайте.");
     } catch (error) {
         showStatus(`Не удалось сохранить сессии: ${error.message}`, true);
     }
@@ -374,14 +412,14 @@ function importJSON(event) {
 
     const reader = new FileReader();
     reader.onerror = () => showStatus("Не удалось прочитать выбранный файл.", true);
-    reader.onload = () => {
+    reader.onload = async () => {
         try {
             const data = normalizeData(JSON.parse(reader.result));
-            StorageManager.save(data);
+            await StorageManager.save(data);
             loadAdminData();
             if (typeof renderHeaderInfo === "function") renderHeaderInfo();
             if (typeof renderRules === "function") renderRules();
-            showStatus("Данные импортированы и сохранены в этом браузере.");
+            showStatus("Данные импортированы и опубликованы.");
         } catch (error) {
             showStatus(`Импорт отменён: ${error.message}`, true);
         } finally {
@@ -389,10 +427,4 @@ function importJSON(event) {
         }
     };
     reader.readAsText(file);
-}
-
-function resetData() {
-    if (confirm("Сбросить локальные изменения и загрузить стандартные данные из data/default-data.json?")) {
-        StorageManager.reset();
-    }
 }
