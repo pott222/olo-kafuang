@@ -1,5 +1,12 @@
+let passwordRecoveryMode = false;
+
 document.addEventListener("DOMContentLoaded", async () => {
     bindAdminEvents();
+    window.addEventListener("site-password-recovery", showPasswordReset);
+    if (hasPasswordRecoveryLink()) {
+        showPasswordReset();
+    }
+
     try {
         await StorageManager.init();
         if (!StorageManager.backendConfigured) {
@@ -8,15 +15,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
         window.addEventListener("site-auth-change", event => {
+            if (passwordRecoveryMode) return;
             updateAdminAccess(event.detail).catch(error => {
                 showStatus(`Не удалось обновить состояние входа: ${error.message}`, true);
             });
         });
-        await updateAdminAccess(await StorageManager.currentUser());
+        if (!passwordRecoveryMode) {
+            await updateAdminAccess(await StorageManager.currentUser());
+        }
     } catch (error) {
         showStatus(`Не удалось загрузить данные: ${error.message}`, true);
     }
 });
+
+function hasPasswordRecoveryLink() {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const queryParams = new URLSearchParams(window.location.search);
+    return hashParams.get("type") === "recovery" || queryParams.get("type") === "recovery";
+}
 
 function bindAdminEvents() {
     const loginForm = document.getElementById("login-screen");
@@ -26,6 +42,23 @@ function bindAdminEvents() {
         event.preventDefault();
         signInAdmin().catch(error => {
             showStatus(`Не удалось выполнить вход: ${error.message}`, true);
+        });
+    });
+
+    document.getElementById("request-password-reset").addEventListener("click", () => {
+        requestAdminPasswordReset().catch(error => {
+            const errorText = document.getElementById("login-error");
+            errorText.textContent = `Не удалось отправить письмо: ${error.message}`;
+            errorText.hidden = false;
+        });
+    });
+
+    document.getElementById("password-reset-screen").addEventListener("submit", event => {
+        event.preventDefault();
+        saveAdminPassword().catch(error => {
+            const errorText = document.getElementById("password-reset-error");
+            errorText.textContent = `Не удалось сохранить пароль: ${error.message}`;
+            errorText.hidden = false;
         });
     });
 
@@ -66,6 +99,47 @@ function bindAdminEvents() {
     document.getElementById("unprivileged-sign-out").addEventListener("click", () => {
         signOut().catch(error => showStatus(`Не удалось выйти: ${error.message}`, true));
     });
+}
+
+function showPasswordReset() {
+    passwordRecoveryMode = true;
+    document.getElementById("login-screen").hidden = true;
+    document.getElementById("admin-dashboard").hidden = true;
+    document.getElementById("password-reset-screen").hidden = false;
+}
+
+async function requestAdminPasswordReset() {
+    const email = document.getElementById("admin-email").value.trim();
+    const errorText = document.getElementById("login-error");
+    const status = document.getElementById("password-reset-request-status");
+    errorText.hidden = true;
+    status.hidden = true;
+    if (!email) {
+        errorText.textContent = "Сначала укажи электронную почту.";
+        errorText.hidden = false;
+        return;
+    }
+
+    const redirectTo = new URL(window.location.pathname, window.location.origin).href;
+    await StorageManager.requestPasswordReset(email, redirectTo);
+    status.textContent = "Если аккаунт существует, письмо со ссылкой для создания или сброса пароля скоро придёт.";
+    status.hidden = false;
+}
+
+async function saveAdminPassword() {
+    const password = document.getElementById("new-admin-password").value;
+    const confirmation = document.getElementById("confirm-admin-password").value;
+    const errorText = document.getElementById("password-reset-error");
+    errorText.hidden = true;
+    if (password !== confirmation) {
+        throw new Error("Пароли не совпадают.");
+    }
+
+    const user = await StorageManager.updatePassword(password);
+    passwordRecoveryMode = false;
+    document.getElementById("password-reset-screen").reset();
+    document.getElementById("password-reset-screen").hidden = true;
+    await updateAdminAccess(user);
 }
 
 async function signInAdmin() {

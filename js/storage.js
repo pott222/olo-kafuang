@@ -123,7 +123,10 @@ const StorageManager = {
         this.client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
         await this.reload();
 
-        this.client.auth.onAuthStateChange((_event, session) => {
+        this.client.auth.onAuthStateChange((event, session) => {
+            if (event === "PASSWORD_RECOVERY") {
+                window.dispatchEvent(new Event("site-password-recovery"));
+            }
             window.dispatchEvent(new CustomEvent("site-auth-change", { detail: session?.user ?? null }));
         });
     },
@@ -172,6 +175,17 @@ const StorageManager = {
         if (error) {
             throw new Error(error.message);
         }
+        return data.user;
+    },
+
+    async requestPasswordReset(email, redirectTo) {
+        const { error } = await this.client.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) throw new Error(error.message);
+    },
+
+    async updatePassword(password) {
+        const { data, error } = await this.client.auth.updateUser({ password });
+        if (error) throw new Error(error.message);
         return data.user;
     },
 

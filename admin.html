@@ -36,9 +36,22 @@
             <label class="login-field" for="admin-password">Пароль</label>
             <input type="password" id="admin-password" placeholder="Пароль аккаунта" autocomplete="current-password" required>
             <button class="btn btn-primary glow-box" type="submit">Войти</button>
+            <button id="request-password-reset" class="btn btn-secondary" type="button">Создать или сбросить пароль</button>
+            <p id="password-reset-request-status" role="status" hidden></p>
             <p id="login-error" role="alert" hidden></p>
             <button id="unprivileged-sign-out" class="btn btn-secondary" type="button" hidden>Выйти из аккаунта</button>
             <p class="security-note">Доступ разрешён только аккаунту, которому владелец проекта выдал роль администратора.</p>
+        </form>
+
+        <form id="password-reset-screen" class="admin-login glow-box" hidden>
+            <h2 class="font-cinzel neon-text">Установить пароль</h2>
+            <p class="login-hint">Задай новый пароль для входа в админку.</p>
+            <label class="login-field" for="new-admin-password">Новый пароль</label>
+            <input type="password" id="new-admin-password" autocomplete="new-password" minlength="8" required>
+            <label class="login-field" for="confirm-admin-password">Повтори пароль</label>
+            <input type="password" id="confirm-admin-password" autocomplete="new-password" minlength="8" required>
+            <button class="btn btn-primary glow-box" type="submit">Сохранить пароль</button>
+            <p id="password-reset-error" role="alert" hidden></p>
         </form>
 
         <p id="admin-status" class="admin-status" role="status" aria-live="polite" hidden></p>
@@ -120,9 +133,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js?v=50dd98a"></script>
-    <script src="js/storage.js"></script>
+    <script src="js/storage.js?v=admin-password-reset-20261110"></script>
     <script src="js/particles.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/admin.js"></script>
+    <script src="js/admin.js?v=admin-password-reset-20261110"></script>
 </body>
 </html>
