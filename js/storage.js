@@ -91,6 +91,7 @@ const StorageManager = {
     client: null,
     data: null,
     initPromise: null,
+    backendConfigured: false,
 
     init() {
         if (!this.initPromise) {
@@ -100,14 +101,25 @@ const StorageManager = {
     },
 
     async connect() {
-        if (!CONFIG.supabaseUrl || CONFIG.supabaseUrl.includes("YOUR_PROJECT_ID") ||
-            !CONFIG.supabaseAnonKey || CONFIG.supabaseAnonKey.includes("YOUR_SUPABASE")) {
-            throw new Error("Сначала подключи проект Supabase: заполни URL и Publishable key в js/config.js.");
+        const hasProjectUrl = Boolean(CONFIG.supabaseUrl && !CONFIG.supabaseUrl.includes("YOUR_PROJECT_ID"));
+        const hasPublishableKey = Boolean(CONFIG.supabaseAnonKey && !CONFIG.supabaseAnonKey.includes("YOUR_SUPABASE"));
+
+        if (!hasProjectUrl && !hasPublishableKey) {
+            const response = await fetch("./data/default-data.json");
+            if (!response.ok) {
+                throw new Error(`Не удалось загрузить data/default-data.json: сервер ответил ${response.status}.`);
+            }
+            this.data = normalizeData(await response.json());
+            return;
+        }
+        if (!hasProjectUrl || !hasPublishableKey) {
+            throw new Error("В js/config.js должны быть заполнены и Supabase Project URL, и Publishable key.");
         }
         if (!window.supabase?.createClient) {
             throw new Error("Не загрузилась библиотека Supabase. Проверь подключение к интернету и обнови страницу.");
         }
 
+        this.backendConfigured = true;
         this.client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
         await this.reload();
 

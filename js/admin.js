@@ -2,6 +2,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindAdminEvents();
     try {
         await StorageManager.init();
+        if (!StorageManager.backendConfigured) {
+            document.getElementById("login-screen").hidden = true;
+            showStatus("Supabase ещё не подключён. Выполни шаги из файла НАЧНИ_ЗДЕСЬ.md, затем обнови сайт.", true);
+            return;
+        }
         window.addEventListener("site-auth-change", event => {
             updateAdminAccess(event.detail).catch(error => {
                 showStatus(`Не удалось обновить состояние входа: ${error.message}`, true);
